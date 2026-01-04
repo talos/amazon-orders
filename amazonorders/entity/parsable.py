@@ -1,6 +1,7 @@
 __copyright__ = "Copyright (c) 2024-2025 Alex Laird"
 __license__ = "MIT"
 
+import json
 import logging
 import re
 from datetime import date
@@ -204,3 +205,42 @@ class Parsable:
             return None
 
         return currency
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert the entity to a dictionary suitable. Use to_json for JSON serialization, as the dictionary
+        will include non-JSON-serializable dates.
+
+        Automatically includes all public attributes, excluding internal state (``parsed``, ``config``).
+        Nested :class:`Parsable` objects are recursively converted to dictionaries.
+
+        :return: A dictionary representation of the entity.
+        """
+        result: Dict[str, Any] = {}
+        for key, value in self.__dict__.items():
+            if key in ("parsed", "config"):
+                continue
+
+            if isinstance(value, Parsable):
+                result[key] = value.to_dict()
+            elif isinstance(value, list):
+                result[key] = [
+                    v.to_dict() if isinstance(v, Parsable) else v
+                    for v in value
+                ]
+            else:
+                result[key] = value
+
+        return result
+
+    def to_json(self, **kwargs: Any) -> str:
+        """
+        Convert the entity to a JSON string.
+
+        Uses :func:`to_dict` for serialization. Date objects are automatically converted to ISO format strings.
+
+        :param kwargs: Additional arguments passed to :func:`json.dumps`.
+        :return: A JSON string representation of the entity.
+        """
+        kwargs.setdefault("default", str)
+        return json.dumps(self.to_dict(), **kwargs)
